@@ -28,7 +28,7 @@ class PaymentService {
       const threeDaysLater = Math.floor(Date.now() / 1000) + 3 * 24 * 60 * 60;
 
       const options = {
-        amount: totalAmount,
+        amount: parseInt(totalAmount),
         currency: "INR",
         accept_partial: false,
         description: "Quotation payment",
@@ -160,8 +160,7 @@ class PaymentService {
           message: "Signature is missing",
         });
       }
-            console.log("webhookSignature==>", webhookSignature);
-
+      console.log("webhookSignature==>", webhookSignature);
 
       const expectedSignature = crypto
         .createHmac("sha256", process.env.RAZORPAY_PAYMENTLINK_WEBHOOK_SECRET)
@@ -175,7 +174,7 @@ class PaymentService {
         });
       }
 
-          console.log("webhookSignature==>", webhookSignature);
+      console.log("webhookSignature==>", webhookSignature);
 
       /* ================= EVENT FILTER ================= */
       const eventType = requestBody.event;

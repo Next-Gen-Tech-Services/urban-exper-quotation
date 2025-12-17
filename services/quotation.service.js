@@ -160,10 +160,9 @@ class QuotationService {
       const quotation = await quotationDao.createQuotation(data);
 
       return res.json({
-        ok: true,
+        success: true,
         message: "Quotation PDF generated successfully",
-        quoteId: result.quoteId,
-        filepath: result.filepath,
+        data: { url: result?.filepath, quoteId: result?.quoteId },
       });
     } catch (error) {
       console.error("Quotation Service Error:", error);

@@ -94,7 +94,6 @@ const QuotationSchema = new Schema(
   }
 );
 
-QuotationSchema.index({ "quotationMeta.crn": 1 }, { unique: true });
 QuotationSchema.index({ "quotationMeta.city": 1 });
 QuotationSchema.index({ createdAt: -1 });
 

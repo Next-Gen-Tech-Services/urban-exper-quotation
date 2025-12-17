@@ -5,7 +5,7 @@ import { fileURLToPath } from "url";
 import fetch from "node-fetch";
 import QRCode from "qrcode";
 import { PutObjectCommand } from "@aws-sdk/client-s3";
-import { AWS_BUCKET_NAME , AWS_REGION } from "../configs/server.config.js";
+import { AWS_BUCKET_NAME, AWS_REGION } from "../configs/server.config.js";
 import { s3 } from "../configs/aws.config.js";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -453,7 +453,7 @@ export const generateQuotationPdf = async (body) => {
   const command = new PutObjectCommand(s3Params);
   const uploadResult = await s3.send(command);
 
-  const fileUrl = `https://${AWS_BUCKET_NAME}.s3.${AWS_REGION}.amazonaws.com/invoice/${fileName}`;
+  const fileUrl = `https://${AWS_BUCKET_NAME}.s3.${AWS_REGION}.amazonaws.com/quotation/${fileName}`;
 
   console.log("fileUrl===>", fileUrl);
 
