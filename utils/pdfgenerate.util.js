@@ -321,7 +321,11 @@ export const generateQuotationPdf = async (body) => {
 
   draw("Re-Paint:", PAGE.m + 10, 10, bold);
   y -= 12;
-  draw("• Touch-up repair, 1 coat Primer, 2 coats of Paint", PAGE.m + 20, 9);
+  draw(
+    "• Touch-up repair, 1 coat Primer(As per Quotation), 2 coats of Paint",
+    PAGE.m + 20,
+    9
+  );
   y -= 20;
 
   /* ================= PAYMENT TERMS ================= */
@@ -393,6 +397,8 @@ export const generateQuotationPdf = async (body) => {
   draw("Payment Terms and Bank Details", PAGE.m, 12, bold);
   y -= 16;
 
+  const leftStartY = y;
+
   [
     "• Bank Transfer: Kotak Mahindra Bank, Connaught Place, Delhi",
     "• Account Name: UrbanXperts Home Services Pvt. Ltd.",
@@ -404,6 +410,22 @@ export const generateQuotationPdf = async (body) => {
     y -= 12;
   });
 
+  const PAYMENT_IMAGE_URL =
+    "https://para-classes-prod.s3.ap-south-1.amazonaws.com/user-profile/1766403554661_urban-expert-payment-image.jpg";
+
+  const imageWidth = 120;
+  const imageX = PAGE.w - PAGE.m - imageWidth;
+  const imageY = leftStartY + 12;
+
+  await drawImageFromUrl(
+    PAYMENT_IMAGE_URL,
+    imageX,
+    imageY,
+    imageWidth,
+    pdfDoc,
+    page
+  );
+
   y -= 16;
 
   draw("Service Warranty", PAGE.m, 12, bold);
@@ -411,8 +433,10 @@ export const generateQuotationPdf = async (body) => {
 
   [
     "• 1-year service warranty applicable from the date of project completion.",
-    "• Warranty excludes damages due to seepage, leakage, heavy rains, structural cracks, movers/packers, or physical damages.",
-    "• Any rework within the warranty period will be verified by the UrbanXperts quality team before execution.",
+    "• Warranty excludes damages due to seepage, leakage, heavy rains,",
+    " structural cracks, movers/packers, or physical damages.",
+    "• Any rework within the warranty period will be verified by the UrbanXperts",
+    "quality team before execution.",
   ].forEach((t) => {
     ensureSpace(14);
     draw(t, PAGE.m, 9);
@@ -425,9 +449,11 @@ export const generateQuotationPdf = async (body) => {
   y -= 14;
 
   [
-    "• All prices quoted are based on defined scope; changes in paint brands, products, or colors may affect pricing.",
+    "• All prices quoted are based on defined scope; changes in paint brands,",
+    "products, or colors may affect pricing.",
     "• Final payment must be made within 24 hours of work completion.",
-    "• Security deposits (refundable or non-refundable) required by society maintenance are the customer’s responsibility,",
+    "• Security deposits (refundable or non-refundable) required by society maintenance",
+    "are the customer’s responsibility,",
     " including vendor entry procedures.",
   ].forEach((t) => {
     ensureSpace(14);
@@ -508,3 +534,29 @@ export const generateQuotationPdf = async (body) => {
 
   return { filepath: fileUrl, quoteId: q.id };
 };
+
+async function drawImageFromUrl(url, x, y, width, pdfDoc, page) {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error("Failed to fetch payment image");
+
+  const bytes = await res.arrayBuffer();
+
+  let image;
+  if (url.endsWith(".png")) {
+    image = await pdfDoc.embedPng(bytes);
+  } else {
+    image = await pdfDoc.embedJpg(bytes);
+  }
+
+  const scale = width / image.width;
+  const height = image.height * scale;
+
+  page.drawImage(image, {
+    x,
+    y: y - height,
+    width,
+    height,
+  });
+
+  return height;
+}

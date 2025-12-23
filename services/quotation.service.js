@@ -115,15 +115,15 @@ class QuotationService {
       console.log("quotationData ====>", quotationData);
 
       /*==================== generate payment link ====*/
-      const paymentLinkResult = await paymentService.generatePaymentLink(
-        payableAmount,
-        customerName,
-        customerContact,
-        crn
-      );
+      // const paymentLinkResult = await paymentService.generatePaymentLink(
+      //   payableAmount,
+      //   customerName,
+      //   customerContact,
+      //   crn
+      // );
 
-      console.log("paymentLinkResult===>", paymentLinkResult);
-      quotationData.paymentLink = paymentLinkResult.paymentLink;
+      // console.log("paymentLinkResult===>", paymentLinkResult);
+      // quotationData.paymentLink = paymentLinkResult.paymentLink;
 
       console.log("quotationData===>", quotationData);
       /* ================= PDF ================= */
