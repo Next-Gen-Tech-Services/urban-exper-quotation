@@ -119,20 +119,42 @@ export const generateQuotationPdf = async (body) => {
   const logo = await pdfDoc.embedJpg(
     new Uint8Array(await logoRes.arrayBuffer())
   );
-  page.drawImage(logo, { x: PAGE.m, y: PAGE.h - 80, width: 120, height: 50 });
+  // page.drawImage(logo, { x: PAGE.m, y: PAGE.h - 80, width: 120, height: 50 });
+
+  const LOGO_WIDTH = 140; // adjust if needed
+  const logoDims = logo.scale(LOGO_WIDTH / logo.width);
+
+  page.drawImage(logo, {
+    x: PAGE.m,
+    y: PAGE.h - PAGE.m - logoDims.height + 40,
+    width: logoDims.width,
+    height: logoDims.height,
+  });
 
   /* ================= CUSTOMER DETAILS ================= */
   let rx = PAGE.w - PAGE.m - 220;
-  let ry = PAGE.h - 50;
+  let ry = PAGE.h - 30;
 
   [
     `Date: ${q.date}`,
     `CRN: ${q.customer?.crn || "-"}`,
     `Name: ${q.customer?.name || "-"}`,
     `Contact: ${q.customer?.contact || "-"}`,
-    `Address: ${q.customer?.address || "-"}`,
   ].forEach((t) => {
     page.drawText(t, { x: rx, y: ry, size: 10, font: normal });
+    ry -= 14;
+  });
+
+  const addressText = `Address: ${q.customer?.address || "-"}`;
+  const addressLines = wrapText(addressText, normal, 10, 200);
+
+  addressLines.forEach((line) => {
+    page.drawText(line, {
+      x: rx,
+      y: ry,
+      size: 10,
+      font: normal,
+    });
     ry -= 14;
   });
 
@@ -156,13 +178,18 @@ export const generateQuotationPdf = async (body) => {
     area: PAGE.m + 70,
     product: PAGE.m + 190,
     qty: PAGE.m + 360,
-    rate: PAGE.m + 420,
+    // rate: PAGE.m + 420,
     total: PAGE.m + 480,
   };
 
-  ["Process", "Area", "Product", "SqFt", "Rate", "Amount"].forEach((t, i) =>
-    draw(t, Object.values(COL)[i], 9, bold)
-  );
+  [
+    "Process",
+    "Area",
+    "Product",
+    "SqFt",
+    //  "Rate",
+    "Amount",
+  ].forEach((t, i) => draw(t, Object.values(COL)[i], 9, bold));
 
   y -= 10;
   hr();
@@ -185,7 +212,7 @@ export const generateQuotationPdf = async (body) => {
     );
 
     draw(r.qty, COL.qty, 9);
-    draw(r.rate, COL.rate, 9);
+    // draw(r.rate, COL.rate, 9);
     draw(r.total.toFixed(2), COL.total, 9);
 
     y -= rowHeight;
@@ -207,13 +234,13 @@ export const generateQuotationPdf = async (body) => {
   draw(q.subtotal.toFixed(2), PAGE.w - PAGE.m - 90);
   y -= 14;
 
-  draw("Promotional Discount", PAGE.m);
+  draw("Discount", PAGE.m);
   draw(`- ${q.discountAmount.toFixed(2)}`, PAGE.w - PAGE.m - 90);
   y -= 14;
 
-  draw("Additional Discount", PAGE.m);
-  draw("0.00", PAGE.w - PAGE.m - 90);
-  y -= 16;
+  // draw("Additional Discount", PAGE.m);
+  // draw("0.00", PAGE.w - PAGE.m - 90);
+  // y -= 16;
 
   hr();
 
@@ -294,7 +321,11 @@ export const generateQuotationPdf = async (body) => {
 
   draw("Re-Paint:", PAGE.m + 10, 10, bold);
   y -= 12;
-  draw("• Touch-up repair, 1 coat Primer, 2 coats of Paint", PAGE.m + 20, 9);
+  draw(
+    "• Touch-up repair, 1 coat Primer(As per Quotation), 2 coats of Paint",
+    PAGE.m + 20,
+    9
+  );
   y -= 20;
 
   /* ================= PAYMENT TERMS ================= */
@@ -366,6 +397,8 @@ export const generateQuotationPdf = async (body) => {
   draw("Payment Terms and Bank Details", PAGE.m, 12, bold);
   y -= 16;
 
+  const leftStartY = y;
+
   [
     "• Bank Transfer: Kotak Mahindra Bank, Connaught Place, Delhi",
     "• Account Name: UrbanXperts Home Services Pvt. Ltd.",
@@ -377,6 +410,22 @@ export const generateQuotationPdf = async (body) => {
     y -= 12;
   });
 
+  const PAYMENT_IMAGE_URL =
+    "https://para-classes-prod.s3.ap-south-1.amazonaws.com/user-profile/1766403554661_urban-expert-payment-image.jpg";
+
+  const imageWidth = 120;
+  const imageX = PAGE.w - PAGE.m - imageWidth;
+  const imageY = leftStartY + 12;
+
+  await drawImageFromUrl(
+    PAYMENT_IMAGE_URL,
+    imageX,
+    imageY,
+    imageWidth,
+    pdfDoc,
+    page
+  );
+
   y -= 16;
 
   draw("Service Warranty", PAGE.m, 12, bold);
@@ -384,11 +433,10 @@ export const generateQuotationPdf = async (body) => {
 
   [
     "• 1-year service warranty applicable from the date of project completion.",
-    "• Warranty excludes damages due to seepage, leakage, heavy rains, structural cracks, movers/packers, or physical damages.",
-    "• Any rework within the warranty period will be verified by the UrbanXperts quality team before execution.",
-    "• All prices quoted are based on defined scope; changes in paint brands, products, or colors may affect pricing.",
-    "• Final payment must be made within 24 hours of work completion.",
-    "• Security deposits (refundable or non-refundable) required by society maintenance are the customer’s responsibility, including vendor entry procedures.",
+    "• Warranty excludes damages due to seepage, leakage, heavy rains,",
+    " structural cracks, movers/packers, or physical damages.",
+    "• Any rework within the warranty period will be verified by the UrbanXperts",
+    "quality team before execution.",
   ].forEach((t) => {
     ensureSpace(14);
     draw(t, PAGE.m, 9);
@@ -396,6 +444,24 @@ export const generateQuotationPdf = async (body) => {
   });
 
   y -= 16;
+  /* ================= PRICING & PAYMENT ================= */
+  draw("Pricing & Payment", PAGE.m, 12, bold);
+  y -= 14;
+
+  [
+    "• All prices quoted are based on defined scope; changes in paint brands,",
+    "products, or colors may affect pricing.",
+    "• Final payment must be made within 24 hours of work completion.",
+    "• Security deposits (refundable or non-refundable) required by society maintenance",
+    "are the customer’s responsibility,",
+    " including vendor entry procedures.",
+  ].forEach((t) => {
+    ensureSpace(14);
+    draw(t, PAGE.m, 9);
+    y -= 12;
+  });
+
+  y -= 14;
 
   draw("Color Policy", PAGE.m, 12, bold);
   y -= 14;
@@ -418,17 +484,26 @@ export const generateQuotationPdf = async (body) => {
     "• Covering and masking of non-detachable objects is included.",
     "• Undulation or unevenness on walls (structural issues) is not covered under warranty.",
     "• Wallpaper removal will incur additional fees based on market rates.",
+    "• Cement plastering or waterproofing, if required, may modify the quoted price and scope of work.",
+    "• No sample work will be provided free of cost. If a customer requests a sample, labour and material charges will apply.",
   ].forEach((t) => {
     draw(t, PAGE.m, 9);
     y -= 12;
   });
 
+  ensureSpace(40);
+  y -= 14;
+
+  draw(" Customer Support", PAGE.m, 12, bold);
+  y -= 14;
+
   draw(
-    "Customer Support: For any concerns during or after project completion, contact us at info@urbanxperts.in or 9554 9554 24.",
+    "For any concerns during or after project completion, contact us at info@urbanxperts.in or 9554 9554 24.",
     PAGE.m,
     9,
     italic
   );
+  y -= 14;
 
   hr();
 
@@ -459,3 +534,29 @@ export const generateQuotationPdf = async (body) => {
 
   return { filepath: fileUrl, quoteId: q.id };
 };
+
+async function drawImageFromUrl(url, x, y, width, pdfDoc, page) {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error("Failed to fetch payment image");
+
+  const bytes = await res.arrayBuffer();
+
+  let image;
+  if (url.endsWith(".png")) {
+    image = await pdfDoc.embedPng(bytes);
+  } else {
+    image = await pdfDoc.embedJpg(bytes);
+  }
+
+  const scale = width / image.width;
+  const height = image.height * scale;
+
+  page.drawImage(image, {
+    x,
+    y: y - height,
+    width,
+    height,
+  });
+
+  return height;
+}
