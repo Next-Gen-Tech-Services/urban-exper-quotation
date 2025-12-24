@@ -453,8 +453,7 @@ export const generateQuotationPdf = async (body) => {
     "products, or colors may affect pricing.",
     "• Final payment must be made within 24 hours of work completion.",
     "• Security deposits (refundable or non-refundable) required by society maintenance",
-    "are the customer’s responsibility,",
-    " including vendor entry procedures.",
+    "are the customer’s responsibility,including vendor entry procedures.",
   ].forEach((t) => {
     ensureSpace(14);
     draw(t, PAGE.m, 9);
@@ -515,11 +514,16 @@ export const generateQuotationPdf = async (body) => {
   const outPath = path.join(outDir, `quote-${q.id}.pdf`);
   fs.writeFileSync(outPath, bytes);
 
-  const fileName = `quotation_${Date.now()}.pdf`;
+  const username = safe(q.customer?.name);
+  const city = safe(q.city);
+  const timestamp = Date.now();
+  const fileName = `quotation_${timestamp}.pdf`;
+
+  const s3Key = `${username}/${city}/${fileName}`;
 
   const s3Params = {
     Bucket: AWS_BUCKET_NAME,
-    Key: `quotation/${fileName}`,
+    Key: s3Key,
     Body: bytes,
     ContentType: "application/pdf",
     ACL: "public-read",
@@ -528,7 +532,7 @@ export const generateQuotationPdf = async (body) => {
   const command = new PutObjectCommand(s3Params);
   const uploadResult = await s3.send(command);
 
-  const fileUrl = `https://${AWS_BUCKET_NAME}.s3.${AWS_REGION}.amazonaws.com/quotation/${fileName}`;
+  const fileUrl = `https://${AWS_BUCKET_NAME}.s3.${AWS_REGION}.amazonaws.com/${s3Key}`;
 
   console.log("fileUrl===>", fileUrl);
 
@@ -560,3 +564,10 @@ async function drawImageFromUrl(url, x, y, width, pdfDoc, page) {
 
   return height;
 }
+
+const safe = (v = "unknown") =>
+  String(v)
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, "_")
+    .replace(/[^a-z0-9_]/g, "");
