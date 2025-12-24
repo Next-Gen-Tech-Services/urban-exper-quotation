@@ -400,8 +400,7 @@ export const generateQuotationPdf = async (body) => {
     "products, or colors may affect pricing.",
     "• Final payment must be made within 24 hours of work completion.",
     "• Security deposits (refundable or non-refundable) required by society maintenance",
-    "are the customer's responsibility,",
-    " including vendor entry procedures.",
+    "are the customer’s responsibility,including vendor entry procedures.",
   ].forEach((t) => {
     ensureSpace(14);
     draw(t, PAGE.m, 9);
@@ -462,14 +461,17 @@ export const generateQuotationPdf = async (body) => {
   // Format: customer-name_city_current-date.pdf
   const sanitize = (str) => String(str || "unknown").replace(/[^a-zA-Z0-9]/g, "-").toLowerCase();
   const dateStr = new Date().toISOString().split("T")[0]; // YYYY-MM-DD
+
+
+  const username = safe(q.customer?.name);
+  const city = safe(q.city);
+  const timestamp = Date.now();
+
+  const s3Key = `${username}/${city}/${fileName}`;
   const fileName = `${sanitize(q.customer?.name)}_${sanitize(q.city)}_${dateStr}.pdf`;
-
-  const outPath = path.join(outDir, fileName);
-  fs.writeFileSync(outPath, bytes);
-
   const s3Params = {
     Bucket: AWS_BUCKET_NAME,
-    Key: `quotation/${fileName}`,
+    Key: s3Key,
     Body: bytes,
     ContentType: "application/pdf",
     ACL: "public-read",
@@ -478,9 +480,42 @@ export const generateQuotationPdf = async (body) => {
   const command = new PutObjectCommand(s3Params);
   await s3.send(command);
 
-  const fileUrl = `https://${AWS_BUCKET_NAME}.s3.${AWS_REGION}.amazonaws.com/quotation/${fileName}`;
+  const fileUrl = `https://${AWS_BUCKET_NAME}.s3.${AWS_REGION}.amazonaws.com/${s3Key}`;
 
   console.log("fileUrl===>", fileUrl);
 
   return { filepath: fileUrl, quoteId: q.id };
 };
+
+async function drawImageFromUrl(url, x, y, width, pdfDoc, page) {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error("Failed to fetch payment image");
+
+  const bytes = await res.arrayBuffer();
+
+  let image;
+  if (url.endsWith(".png")) {
+    image = await pdfDoc.embedPng(bytes);
+  } else {
+    image = await pdfDoc.embedJpg(bytes);
+  }
+
+  const scale = width / image.width;
+  const height = image.height * scale;
+
+  page.drawImage(image, {
+    x,
+    y: y - height,
+    width,
+    height,
+  });
+
+  return height;
+}
+
+const safe = (v = "unknown") =>
+  String(v)
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, "_")
+    .replace(/[^a-z0-9_]/g, "");
