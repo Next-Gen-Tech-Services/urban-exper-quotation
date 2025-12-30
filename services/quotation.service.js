@@ -8,6 +8,7 @@ import rateDao from "../daos/rate.dao.js";
 import quotationDao from "../daos/quotation.dao.js";
 import rateModel from "../models/rate.model.js";
 import paymentService from "../hook/payment.hook.js";
+import { sendMail } from "../utils/email.util.js";
 
 class QuotationService {
   async createQuotationService(req, res) {
@@ -18,11 +19,13 @@ class QuotationService {
         crn,
         customerName,
         customerContact,
+        customerEmail,
         customerAddress,
         items,
         discountPercent = 0,
       } = req.body;
 
+      console.log("req.body====>", req.body);
       if (!city || !crn || !items?.length) {
         return res.status(400).json({
           ok: false,
@@ -104,6 +107,7 @@ class QuotationService {
           name: customerName,
           contact: customerContact,
           address: customerAddress,
+          email: customerEmail,
         },
         items: computedItems,
         subTotal,
@@ -129,6 +133,8 @@ class QuotationService {
       /* ================= PDF ================= */
       const result = await generateQuotationPdf(quotationData);
 
+      console.log("PDF Generation Result===>", result);
+
       const pdfUrl = `${req.protocol}://${req.get("host")}/uploads/quotations/${
         result.filename
       }`;
@@ -143,6 +149,7 @@ class QuotationService {
         customer: {
           name: customerName,
           mobile: customerContact,
+          email: customerEmail,
           address: customerAddress,
         },
         areaPricingDetails: computedItems,
@@ -158,6 +165,23 @@ class QuotationService {
         },
       };
       const quotation = await quotationDao.createQuotation(data);
+
+      if (quotation) {
+        //send email
+        await sendMail(
+          customerEmail,
+          "Your Personalized Quotation – UrbanXperts",
+          "user.quotation",
+          {
+            customerName: customerName,
+            crn: crn,
+            date: new Date().toLocaleDateString("en-IN"),
+            finalAmount: payableAmount,
+            quotationUrl: result.filepath,
+          },
+          ["info@urbanxperts.in"]
+        );
+      }
 
       return res.json({
         success: true,
