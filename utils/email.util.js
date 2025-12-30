@@ -1,6 +1,7 @@
 import nodemailer from "nodemailer";
 import ejs from "ejs";
 import path from "path";
+import fs from "fs";
 import log from "../configs/logger.config.js";
 import {
   MAIL_NO_REPLAY,
@@ -13,7 +14,7 @@ import {
 const transporter = nodemailer.createTransport({
   host: MAIL_HOST,
   port: MAIL_PORT || 465,
-  secure: MAIL_PORT == 465, 
+  secure: MAIL_PORT == 465,
   auth: {
     user: MAIL_USERNAME,
     pass: MAIL_PASSWORD,
@@ -24,30 +25,41 @@ const transporter = nodemailer.createTransport({
   pool: true,
 });
 
-export const sendMail = async (email, subject, templateName, templateData) => {
+export const sendMail = async (
+  email,
+  subject,
+  templateName,
+  templateData = {},
+  cc = []
+) => {
   try {
+    console.log("EMAIL--->", email, subject, templateName, templateData);
     // Render EJS template
-    const templatePath = path.join(process.cwd(), "email", `${templateName}.ejs`);
+    const templatePath = path.join(
+      process.cwd(),
+      "emails",
+      `${templateName}.ejs`
+    );
+
     const html = await ejs.renderFile(templatePath, templateData);
 
-    const attachments = [];
-    if (templateData.qrCodeDataURL) {
-      const base64Data = templateData.qrCodeDataURL.replace(/^data:image\/png;base64,/, "");
-      attachments.push({
-        filename: "qr-code.png",
-        content: base64Data,
-        encoding: "base64",
-        cid: "qr-code@para",
-      });
-    }
+    // Attach only PDF (if provided)
 
-    // Send the email
+    // Send Email
     await transporter.sendMail({
       from: MAIL_NO_REPLAY,
       to: email,
+      cc: cc,
       subject,
       html,
-      attachments,
+      attachments: templateData.quotationUrl
+        ? [
+            {
+              filename: "Quotation.pdf",
+              path: templateData.quotationUrl, // S3 URL
+            },
+          ]
+        : [],
     });
 
     log.info(`utils : email : Email sent successfully to ${email}`);

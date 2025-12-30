@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>Your Quotation | UrbanXperts</title>
+  </head>
+
+  <body
+    style="
+      margin: 0;
+      padding: 0;
+      background: #8c8a8a;
+      font-family: Arial, Helvetica, sans-serif;
+    "
+  >
+    <table width="100%" cellpadding="0" cellspacing="0">
+      <tr>
+        <td align="center" style="padding: 60px 0">
+          <table
+            width="640"
+            cellpadding="0"
+            cellspacing="0"
+            style="
+              background: #111111;
+              border-radius: 14px;
+              box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+              overflow: hidden;
+            "
+          >
+            <!-- Header -->
+            <tr>
+              <td style="padding: 45px 55px 30px">
+                <h1
+                  style="
+                    margin: 0;
+                    color: #ffffff;
+                    font-size: 28px;
+                    letter-spacing: 2px;
+                  "
+                >
+                  UrbanXperts
+                </h1>
+                <p
+                  style="
+                    margin-top: 8px;
+                    font-size: 12px;
+                    letter-spacing: 3px;
+                    color: #f97316;
+                  "
+                >
+                  PREMIUM HOME TRANSFORMATION
+                </p>
+              </td>
+            </tr>
+
+            <!-- Divider -->
+            <tr>
+              <td>
+                <div
+                  style="
+                    height: 1px;
+                    background: linear-gradient(to right, #111, #f97316, #111);
+                    margin: 0 55px;
+                  "
+                ></div>
+              </td>
+            </tr>
+
+            <!-- Content -->
+            <tr>
+              <td style="padding: 40px 55px; color: #e5e7eb">
+                <p style="font-size: 16px; color: #ffffff">
+                  Dear <strong><%= customerName %></strong>,
+                </p>
+
+                <p style="font-size: 15px; line-height: 1.9; color: #cbd5e1">
+                  Thank you for choosing <strong>UrbanXperts</strong>. Please
+                  find your personalized quotation prepared with premium
+                  materials and expert craftsmanship.
+                </p>
+
+                <!-- Quote Details -->
+                <table
+                  width="100%"
+                  cellpadding="0"
+                  cellspacing="0"
+                  style="
+                    margin: 30px 0;
+                    background: #0f0f0f;
+                    border: 1px solid #1f2937;
+                    border-radius: 10px;
+                  "
+                >
+                  <tr>
+                    <td
+                      style="
+                        padding: 18px 22px;
+                        border-bottom: 1px solid #1f2937;
+                      "
+                    >
+                      <span style="color: #9ca3af; font-size: 13px"
+                        >Quotation Reference</span
+                      ><br />
+                      <strong style="color: #ffffff"><%= crn %></strong>
+                    </td>
+                  </tr>
+
+                  <tr>
+                    <td
+                      style="
+                        padding: 18px 22px;
+                        border-bottom: 1px solid #1f2937;
+                      "
+                    >
+                      <span style="color: #9ca3af; font-size: 13px"
+                        >Issue Date</span
+                      ><br />
+                      <strong style="color: #ffffff"><%= date %></strong>
+                    </td>
+                  </tr>
+
+                  <tr>
+                    <td style="padding: 22px">
+                      <span style="color: #9ca3af; font-size: 13px"
+                        >Final Amount Payable</span
+                      ><br />
+                      <strong style="font-size: 22px; color: #f97316">
+                        ₹ <%= finalAmount %>
+                      </strong>
+                    </td>
+                  </tr>
+                </table>
+
+                <!-- Download Button -->
+                <div style="text-align: center; margin: 40px 0">
+                  <a
+                    href="<%= quotationUrl %>"
+                    target="_blank"
+                    style="
+                      background: #f97316;
+                      color: #111111;
+                      text-decoration: none;
+                      font-weight: bold;
+                      padding: 14px 32px;
+                      border-radius: 8px;
+                      font-size: 15px;
+                      display: inline-block;
+                    "
+                  >
+                    Download Quotation
+                  </a>
+                </div>
+
+                <p style="font-size: 14px; line-height: 1.8; color: #9ca3af">
+                  This quotation is valid for
+                  <strong style="color: #ffffff">30 days</strong>. Please review
+                  the document and let us know when you’d like to proceed.
+                </p>
+
+                <p style="font-size: 15px; color: #ffffff; margin-top: 30px">
+                  Warm regards,<br />
+                  <strong>UrbanXperts Team</strong>
+                </p>
+              </td>
+            </tr>
+
+            <!-- Footer -->
+            <tr>
+              <td
+                style="
+                  background: #0b0b0b;
+                  padding: 28px 55px;
+                  text-align: center;
+                "
+              >
+                <p style="margin: 0; font-size: 13px; color: #9ca3af">
+                  info@urbanxperts.in • +91 9554 9554 24
+                </p>
+                <p style="margin-top: 8px; font-size: 11px; color: #6b7280">
+                  © <%= new Date().getFullYear() %> UrbanXperts Home Services
+                  Pvt. Ltd.
+                </p>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>

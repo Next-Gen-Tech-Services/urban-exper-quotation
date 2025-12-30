@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+  <body
+    style="font-family: Arial, sans-serif; background: #f3f4f6; padding: 20px"
+  >
+    <h2>📄 New Quotation Generated</h2>
+
+    <p><strong>Customer Name:</strong> <%= customerName %></p>
+    <p><strong>CRN:</strong> <%= crn %></p>
+    <p><strong>Issue Date:</strong> <%= date %></p>
+    <p><strong>Final Amount:</strong> ₹ <%= finalAmount %></p>
+
+    <p>
+      <strong>Quotation PDF:</strong><br />
+      <a href="<%= quotationUrl %>" target="_blank">Download Quotation</a>
+    </p>
+
+    <hr />
+    <p style="font-size: 12px; color: #6b7280">
+      This is an automated system email.
+    </p>
+  </body>
+</html>
