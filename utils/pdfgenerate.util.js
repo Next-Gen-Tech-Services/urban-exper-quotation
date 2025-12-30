@@ -7,7 +7,6 @@ import QRCode from "qrcode";
 import { PutObjectCommand } from "@aws-sdk/client-s3";
 import { AWS_BUCKET_NAME, AWS_REGION } from "../configs/server.config.js";
 import { s3 } from "../configs/aws.config.js";
-
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -30,13 +29,15 @@ function wrapText(text, font, size, maxWidth) {
   return lines;
 }
 
-/* ================= COMPUTE QUOTE ================= */
+/* ================= COMPUTE ================= */
 function computeQuote(body) {
   let subtotal = 0;
 
   const breakdown = body.items.map((item) => {
+    // ✅ USE PRE-COMPUTED VALUES IF PRESENT
     const qty = item.areaSqFt || 0;
     const rate = item.ratePerSqFt ?? item.rate ?? 0;
+
     const total = item.amount ?? +(rate * qty).toFixed(2);
 
     subtotal += total;
@@ -52,8 +53,10 @@ function computeQuote(body) {
   });
 
   const discountPercent = body.discountPercent || 0;
+
   const discountAmount =
     body.discountAmount ?? +((subtotal * discountPercent) / 100).toFixed(2);
+
   const payable = body.payableAmount ?? +(subtotal - discountAmount).toFixed(2);
 
   return {
@@ -68,12 +71,14 @@ function computeQuote(body) {
   };
 }
 
-/* ================= GENERATE PDF ================= */
+/* ================= PDF ================= */
 export const generateQuotationPdf = async (body) => {
   const q = computeQuote(body);
+
   console.log("q", q);
 
   const pdfDoc = await PDFDocument.create();
+
   const PAGE = { w: 595.28, h: 841.89, m: 40 };
   let page = pdfDoc.addPage([PAGE.w, PAGE.h]);
   let y = PAGE.h - PAGE.m;
@@ -114,8 +119,9 @@ export const generateQuotationPdf = async (body) => {
   const logo = await pdfDoc.embedJpg(
     new Uint8Array(await logoRes.arrayBuffer())
   );
+  // page.drawImage(logo, { x: PAGE.m, y: PAGE.h - 80, width: 120, height: 50 });
 
-  const LOGO_WIDTH = 140;
+  const LOGO_WIDTH = 140; // adjust if needed
   const logoDims = logo.scale(LOGO_WIDTH / logo.width);
 
   page.drawImage(logo, {
@@ -143,7 +149,12 @@ export const generateQuotationPdf = async (body) => {
   const addressLines = wrapText(addressText, normal, 10, 200);
 
   addressLines.forEach((line) => {
-    page.drawText(line, { x: rx, y: ry, size: 10, font: normal });
+    page.drawText(line, {
+      x: rx,
+      y: ry,
+      size: 10,
+      font: normal,
+    });
     ry -= 14;
   });
 
@@ -167,12 +178,18 @@ export const generateQuotationPdf = async (body) => {
     area: PAGE.m + 70,
     product: PAGE.m + 190,
     qty: PAGE.m + 360,
+    // rate: PAGE.m + 420,
     total: PAGE.m + 480,
   };
 
-  ["Process", "Area", "Product", "SqFt", "Amount"].forEach((t, i) =>
-    draw(t, Object.values(COL)[i], 9, bold)
-  );
+  [
+    "Process",
+    "Area",
+    "Product",
+    "SqFt",
+    //  "Rate",
+    "Amount",
+  ].forEach((t, i) => draw(t, Object.values(COL)[i], 9, bold));
 
   y -= 10;
   hr();
@@ -195,6 +212,7 @@ export const generateQuotationPdf = async (body) => {
     );
 
     draw(r.qty, COL.qty, 9);
+    // draw(r.rate, COL.rate, 9);
     draw(r.total.toFixed(2), COL.total, 9);
 
     y -= rowHeight;
@@ -220,60 +238,76 @@ export const generateQuotationPdf = async (body) => {
   draw(`- ${q.discountAmount.toFixed(2)}`, PAGE.w - PAGE.m - 90);
   y -= 14;
 
+  // draw("Additional Discount", PAGE.m);
+  // draw("0.00", PAGE.w - PAGE.m - 90);
+  // y -= 16;
+
   hr();
 
   draw("Final Amount Payable", PAGE.m, 12, bold);
   draw(q.payable.toFixed(2), PAGE.w - PAGE.m - 90, 12, bold);
   y -= 30;
 
-  /* ================= UPI QR CODE (RIGHT COLUMN) ================= */
-  const RIGHT_X = PAGE.w / 2 + 20;
+  /* ================= PAYMENT LINK (RIGHT COLUMN) ================= */
+
+  const LEFT_X = PAGE.m;
+  const RIGHT_X = PAGE.w / 2 + 20; // right vacant area
   const RIGHT_COL_WIDTH = PAGE.w / 2 - PAGE.m - 30;
-  const UPI_ID = "urbanxperts@kotak";
+  if (body.paymentLink) {
+    const startY = y; // align with left content start
 
-  const startY = y;
-  let qrY = startY;
+    let ry = startY;
 
-  // Heading
-  page.drawText("Scan to Pay", {
-    x: RIGHT_X,
-    y: qrY,
-    size: 11,
-    font: bold,
-  });
+    // Heading
+    page.drawText("Payment Link", {
+      x: RIGHT_X,
+      y: ry,
+      size: 11,
+      font: bold,
+    });
 
-  qrY -= 16;
+    ry -= 16;
 
-  // UPI ID
-  page.drawText(`UPI ID: ${UPI_ID}`, {
-    x: RIGHT_X,
-    y: qrY,
-    size: 9,
-    font: normal,
-  });
+    // Clickable link (wrapped)
+    const linkLines = wrapText(body.paymentLink, normal, 9, RIGHT_COL_WIDTH);
 
-  qrY -= 20;
+    linkLines.forEach((line) => {
+      page.drawText(line, {
+        x: RIGHT_X,
+        y: ry,
+        size: 9,
+        font: normal,
+        color: rgb(0, 0, 0.8),
+        link: body.paymentLink, // ✅ clickable
+      });
+      ry -= 12;
+    });
 
-  // Generate UPI QR Code
-  const upiString = `upi://pay?pa=${UPI_ID}&pn=UrbanXperts&cu=INR`;
-  const qrDataUrl = await QRCode.toDataURL(upiString, {
-    margin: 1,
-    width: 140,
-  });
+    ry -= 10;
 
-  const qrBytes = Uint8Array.from(
-    Buffer.from(qrDataUrl.split(",")[1], "base64")
-  );
+    // QR Code
+    const qrDataUrl = await QRCode.toDataURL(body.paymentLink, {
+      margin: 1,
+      width: 140,
+    });
 
-  const qrImage = await pdfDoc.embedPng(qrBytes);
-  const qrSize = 110;
+    const qrBytes = Uint8Array.from(
+      Buffer.from(qrDataUrl.split(",")[1], "base64")
+    );
 
-  page.drawImage(qrImage, {
-    x: RIGHT_X + (RIGHT_COL_WIDTH - qrSize) / 2,
-    y: qrY - qrSize,
-    width: qrSize,
-    height: qrSize,
-  });
+    const qrImage = await pdfDoc.embedPng(qrBytes);
+
+    const qrSize = 110;
+
+    page.drawImage(qrImage, {
+      x: RIGHT_X + (RIGHT_COL_WIDTH - qrSize) / 2,
+      y: ry - qrSize,
+      width: qrSize,
+      height: qrSize,
+    });
+
+    // IMPORTANT: do NOT modify `y`
+  }
 
   /* ================= PROCESS NOTE ================= */
   ensureSpace(120);
@@ -331,7 +365,9 @@ export const generateQuotationPdf = async (body) => {
     );
     y -= 12;
     draw(
-      `• 55%  After half work completion = Rs. ${(q.payable * 0.55).toFixed(0)}`,
+      `• 55%  After half work completion = Rs. ${(q.payable * 0.55).toFixed(
+        0
+      )}`,
       PAGE.m + 10,
       9
     );
@@ -361,6 +397,8 @@ export const generateQuotationPdf = async (body) => {
   draw("Payment Terms and Bank Details", PAGE.m, 12, bold);
   y -= 16;
 
+  const leftStartY = y;
+
   [
     "• Bank Transfer: Kotak Mahindra Bank, Connaught Place, Delhi",
     "• Account Name: UrbanXperts Home Services Pvt. Ltd.",
@@ -371,6 +409,22 @@ export const generateQuotationPdf = async (body) => {
     draw(t, PAGE.m, 9);
     y -= 12;
   });
+
+  const PAYMENT_IMAGE_URL =
+    "https://para-classes-prod.s3.ap-south-1.amazonaws.com/user-profile/1766403554661_urban-expert-payment-image.jpg";
+
+  const imageWidth = 120;
+  const imageX = PAGE.w - PAGE.m - imageWidth;
+  const imageY = leftStartY + 12;
+
+  await drawImageFromUrl(
+    PAYMENT_IMAGE_URL,
+    imageX,
+    imageY,
+    imageWidth,
+    pdfDoc,
+    page
+  );
 
   y -= 16;
 
@@ -390,7 +444,6 @@ export const generateQuotationPdf = async (body) => {
   });
 
   y -= 16;
-
   /* ================= PRICING & PAYMENT ================= */
   draw("Pricing & Payment", PAGE.m, 12, bold);
   y -= 14;
@@ -458,17 +511,16 @@ export const generateQuotationPdf = async (body) => {
   const outDir = path.join(__dirname, "../quotes");
   fs.mkdirSync(outDir, { recursive: true });
 
-  // Format: customer-name_city_current-date.pdf
-  const sanitize = (str) => String(str || "unknown").replace(/[^a-zA-Z0-9]/g, "-").toLowerCase();
-  const dateStr = new Date().toISOString().split("T")[0]; // YYYY-MM-DD
-
+  const outPath = path.join(outDir, `quote-${q.id}.pdf`);
+  fs.writeFileSync(outPath, bytes);
 
   const username = safe(q.customer?.name);
   const city = safe(q.city);
   const timestamp = Date.now();
+  const fileName = `quotation_${timestamp}.pdf`;
 
   const s3Key = `${username}/${city}/${fileName}`;
-  const fileName = `${sanitize(q.customer?.name)}_${sanitize(q.city)}_${dateStr}.pdf`;
+
   const s3Params = {
     Bucket: AWS_BUCKET_NAME,
     Key: s3Key,
@@ -478,7 +530,7 @@ export const generateQuotationPdf = async (body) => {
   };
 
   const command = new PutObjectCommand(s3Params);
-  await s3.send(command);
+  const uploadResult = await s3.send(command);
 
   const fileUrl = `https://${AWS_BUCKET_NAME}.s3.${AWS_REGION}.amazonaws.com/${s3Key}`;
 
